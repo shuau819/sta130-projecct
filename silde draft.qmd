@@ -1,0 +1,322 @@
+---
+title: "Data Analysis of Wellspring Member Engagement"
+subtitle: "You can either put a subtitle here or delete this line"
+author: "Team members' full names, tutorial groups, and group number"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    fontsize: 3.5em
+    width: 1600
+    height: 900
+    margin: 0.1
+    pdf-max-pages-per-slide: 1
+    self-contained: true
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,      # Hide code
+  include = FALSE,   # Do not include output
+  warning = FALSE,   # Suppress warnings
+  message = FALSE,   # Suppress messages
+  results = "hide"   # Hide printed output
+)
+
+# Note: the options above are to hide the code chunk in the slides and to not include the code in the slides
+# There are many other options you can use to customize which parts of the code are run / displayed, 
+# as well as how the output is displayed. 
+# You can learn more at https://quarto.org/docs/computations/execution-options.html
+```
+
+```{r load-data, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# Load Wellspring data
+data_patient_members <- read_csv("data/Member_Background.csv")
+data_attendance_records <- read_csv("data/Service_Deliveries.csv")
+
+# Show a quick overview
+glimpse(data_patient_members)
+glimpse(data_attendance_records)
+```
+
+# Introduction
+
+-   The objective for this project is to \vspace{0.2cm}
+-   We are provided with the "" dataset \vspace{0.2cm}
+-   Our target population for presenting the results is the \vspace{0.2cm}
+
+## Objectives
+
+\vspace{0.8cm}
+
+### List of research questions
+
+For this investigation we have chosen three research questions, \vspace{0.2cm}
+
+-    Is Wellspring’s membership age distribution balanced? \vspace{0.2cm}
+-    \vspace{0.2cm}
+-    \vspace{0.2cm}
+
+## Question 1: Introduction
+
+-   Research question - Is Wellspring’s membership age distribution balanced? \vspace{0.2cm}
+-   For this question, the variables which will be utilized within this method would be the ‘**age_years**’ variable within the data set. From the **age_years** variables, a new binary variable will be created, which classifies members as "young members" (age \< 40) and "elder members" to calculate the proportion of young members among all membership. \vspace{0.2cm}
+-   In order to carry out this research question, we would use a **one-sample proportion test** to determine whether the proportion of young members (defined as those under 40 years old) is equal to the proportion of elder members. \vspace{0.2cm}
+-   H₀ (Null Hypothesis): The proportion of young members is equal to 50% (i.e., the age
+    distribution is balanced). \vspace{0.2cm}
+-   Ha (Alternative Hypothesis): The proportion of young members is not
+    equal to 50% (i.e., there is an imbalance in the age distribution). \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 1: Data Visualization
+
+```{r age-distribution, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align='center'}
+# Create the "young Members" and "elder Members" classification
+data_age_groups <- data_patient_members %>%
+  mutate(age_group = ifelse(age_years < 40, "young Members (<40)", "elder Members (≥40)"))
+
+# Calculate the percentage of each group
+age_distribution <- data_age_groups %>%
+  count(age_group) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Create the bar plot with color-coding and a 50% reference line
+age_distribution %>%
+  ggplot(aes(x = age_group, y = percentage, fill = age_group)) +
+  geom_bar(stat = "identity", width = 0.6, show.legend = FALSE) +
+  geom_hline(yintercept = 50, linetype = "dashed", color = "black") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5, size = 5) +
+  scale_fill_manual(values = c("deeppink", "cyan3")) +
+  scale_y_continuous(limits = c(0, 60), expand = c(0, 0)) + 
+  labs(title = "Proportion of Young vs. Elder Members",
+       x = "Age Group",
+       y = "Percentage of Total Members") +
+  theme_minimal()
+```
+
+-   Elder Members (≥40) are the majority, comprising 52.1% of the total membership.
+
+-   Young Members (\<40) are significantly underrepresented, making up only 6.9% of members.
+
+-   A large portion of members fall into the elder category, suggesting that Wellspring's services are more utilized by older individuals.
+
+-   41% of members have missing age data (`NA`). This means almost half of the data set lacks birth year or age information. The high percentage of missing values could affect conclusions about age distribution.
+
+------------------------------------------------------------------------
+
+## Question 1: Statistical Analysis
+
+-   A bootstrap confidence interval test was used to narrow down the range of values which contain the mean amount of nights \vspace{0.2cm}
+-   It was specifically done at the 95% level of confidence so that the results gathered would be more accurate in comparison to other levels of confidence which will result in more usable data for the Expedia researchers and greater application of results. \vspace{0.2cm}
+-   We found the distribution of nights stayed in which contained the true average number of nights stayed \vspace{0.2cm}
+-   We resampled the original sample with replacement 10,000 times which allowed for a simulation of sampling the population distribution however more feasible
+-   Lastly the new distribution formed was narrowed down further by excluding 2.5% of the extreme values arriving at our 95% confidence interval \vspace{0.2cm}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+library(tidyverse)
+
+
+set.seed(420)
+
+# this dataset expedia_data is a sample(assume)
+boot_means <- rep(NA, 10000)
+for(i in 1:10000){
+  boot_samp <- expedia_data %>% sample_n(size = 10000, replace = TRUE) %>% 
+    select(stay_length)
+  boot_means[i] <- as.numeric(boot_samp %>% 
+                                summarise(mean_stay_length = mean(stay_length)))
+}
+boot_means <- tibble(mean_stay_length = boot_means)
+#quantile(boot_means$mean_stay_length, c(0.025, 0.975))
+
+```
+
+------------------------------------------------------------------------
+
+## Question 1: Results
+
+| 2.5%  | 97.5% |
+|:-----:|:-----:|
+| 2.897 | 3.258 |
+
+-   From this bootstrapping investigation we are 95% confident that the mean stay length for listings on the Expedia website from 2021-06-01 to 2021-07-31 is between 2.897 and 3.258 nights \vspace{0.2cm}
+-   This conclusion does not give the exact mean stay length however it gives a plausible range of values thats small enough that it will still be useful to the researchers \vspace{0.2cm}
+-   In comparison to Expedia's competitor, Airbnb, this range contains a number that is lower (Airbnb's average stay length is 3.9 nights) which leads us to believe that there is room for improvement with the listings given to consumers \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 2: Introduction
+
+-   Research question - **Is the proportion of the first listed property a travel ad, equal to 50%?** \vspace{0.2cm}
+-   A one proportion hypothesis will be used with the research question taken as the assumption or null hypothesis in which we will determine the level of evidence against. \vspace{0.2cm}
+-   The first listings were chosen as the variable being investigated because it shows the first preference from Expedia to the consumer criteria. \vspace{0.2cm}
+-   The proportion being greater than 50% was chosen because my friend noticed that a majority of first listings have been in travel ads hence we would like to test this hypothesis. \vspace{0.2cm}
+-   The variable chosen is "is_travel_ad1" which determines whether the first listing was advertised in a travel ad. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 2: Data Visualization
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+library(tidyverse)
+expedia <- read_csv('ExpediaSearchData.csv')
+expedia %>% mutate(trvl_notrvl=case_when(is_travel_ad1==1~'Travel Ad', is_travel_ad1==0~'Not Travel Ad')) %>%
+  ggplot(aes(x=trvl_notrvl)) +
+  geom_bar(colour='black', fill='red') +
+  labs(x='Whether the first listing was advertised in a travel ad', y='Frequency', title='Frequency of First Listing being a Travel Ad or not')
+```
+
+The above bar graph shows the frequency of the first listing being a Travel Ad or not. It can be observed that out of the sample data, 600 of the first listings were not Travel Ads, while the rest 400 were Travel Ads.
+
+------------------------------------------------------------------------
+
+## Question 2: Statistical Analysis
+
+-   Null Hypothesis ($H_0$): Among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, the proportion of the first listings which are advertised in travel ads is equal to 50%.
+-   Alternative Hypothesis ($H_1$): Among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, the proportion of the first listings which are advertised in travel ads is not equal to 50%.
+-   The test statistic, the p value, can be calculated from a graph made up of several repetitions of simulated data with proportions of advertised listings in each sample.
+-   The p value obtained can be used to come up with a valid conclusion on whether to reject or accept the null hypothesis.
+-   The test included 10,000 simulations to determine the proportion of 1st listings advertised as travel ads in 10,000 samples.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+set.seed(773)
+expedia <- expedia_data
+n <- nrow(expedia)
+reps <- 10000
+sim_stats <- rep(NA, reps)
+
+proptrvlad <- (expedia %>% mutate(trvl_notrvl=case_when(is_travel_ad1==1~'Travel Ad', is_travel_ad1==0~'Not Travel Ad'))
+            %>% filter(trvl_notrvl=='Travel Ad') %>% summarise(total=n()) %>% as.numeric())/n
+
+for(i in 1:reps)
+{
+  new_stats <- sample(c('Travel Ad', 'Not Travel Ad'), size=n, prob=c(0.5, 0.5), replace=TRUE)
+  stats_p <- sum(new_stats=='Travel Ad')/n
+  
+  sim_stats[i] <- stats_p 
+}
+
+simulations <- tibble(p_travelad=sim_stats)
+
+p_value <- simulations %>% 
+  filter(abs(p_travelad-0.5)>=abs(proptrvlad-0.5)) %>% 
+  summarise(pvalue=n()/reps)
+
+#as.numeric(p_value)
+```
+
+------------------------------------------------------------------------
+
+## Question 2: Results
+
+-   The actual proportion of first listings advertised in a travel ad was found to be 0.419. \vspace{0.2cm}
+-   The p-value was found to be 0. \vspace{0.2cm}
+-   Since the p-value is 0 which is less than 0.001, we conclude that we have very strong evidence against the null hypothesis that among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, the proportion of the first listings which are advertised in travel ads is equal to 50%. \vspace{0.2cm}
+-   Further research is requested to get a better idea on the influence of travel advertisements on the effectiveness of search results for consumers \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 3: Introduction
+
+-   Research question - **Is there a difference in the average rating of first listings with free cancellation and first listings with no free cancellation?** \vspace{0.2cm}
+-   A two proportion hypothesis will be used with the research question taken as the assumption or null hypothesis in which we will determine the level of evidence against. \vspace{0.2cm}
+-   The first listings were chosen as the variable being investigated because it shows the first preference from Expedia to the consumer criteria. \vspace{0.2cm}
+-   The variables chosen are "is_free_cancellation1" which determines whether the first listing has a free cancellation option and "review_rating1" which is used to indicate the average rating of the 1st listing. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 3: Data Visualizations
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+
+expedia %>% mutate(cancel_notcancel=case_when(is_free_cancellation1 == 1 ~'Free Cancellation', is_free_cancellation1 == 0 ~'No Free Cancellation')) %>%
+  ggplot(aes(x=cancel_notcancel)) +
+  geom_bar(colour='black', fill='orange') +
+  labs(x='First Listing has a Free Cancellation Option', y='Frequency', title='First Listings having Free Cancellation')
+```
+
+The bar chart shows the frequency of First Listings in the sample dataset that had the Free Cancellation Option or not. It may be observed that 600 of the listings had the Free Cancellation option while 400 listings did not.
+
+------------------------------------------------------------------------
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+expedia %>% 
+  ggplot(aes(x=review_rating1)) +
+  geom_bar(colour='black', fill='blue') +
+  labs(x='First Listing has a Free Cancellation Option', y='Frequency', title='Breakdown of Reviews of the First Listings')
+```
+
+The bar chart shows the split for the reviews given for all first listings in the score range 1-5. The modal review score is 4 with over 600 listings whereas number of review scores were lower from the range 0-2 in comparison to 3-5. The data was also concentrated in this same 3-5 review score range.
+
+------------------------------------------------------------------------
+
+## Question 3: Statistical Analysis
+
+-   Null Hypothesis ($H_0$): Among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, there is no difference between the the average review rating for first listings between the groups which have free cancellation and don't have free cancellation.
+-   Alternative Hypothesis ($H_1$): Among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, there is a difference between the the average review review rating for first listings between the groups which have free cancellation and don't have free cancellation.
+-   The test statistic, the p value, can be calculated from a graph made up of several repetitions of simulated data with differences in the means between first listings with and without free cancellation.
+-   The p value obtained can be used to come up with a valid conclusion on whether to reject or accept the null hypothesis.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+test_stat <- expedia_data %>% group_by(is_free_cancellation1) %>%
+  summarise(means = mean(review_rating1), .groups="drop") %>%
+  summarise(value = diff(means))
+test_stat <- as.numeric(test_stat)
+#test_stat
+set.seed(420)
+repititions <- 10000
+simulated_values <- rep(NA, repititions)
+for (i in 1:repititions){
+  simdata <- expedia_data %>% 
+    mutate(is_free_cancellation1 = sample(is_free_cancellation1))
+  sim_value <- simdata %>%
+    group_by(is_free_cancellation1) %>%
+    summarise(means = mean(review_rating1)) %>%
+    summarise(value = diff(means))
+  simulated_values[i] <- as.numeric(sim_value)
+}
+sim <- tibble(mean_diff = simulated_values)
+num_more_extreme <- sim %>%
+  filter(abs(mean_diff) >= abs(test_stat)) %>%
+  summarise(n())
+p_value <- as.numeric(num_more_extreme / repititions)
+#p_value
+```
+
+------------------------------------------------------------------------
+
+## Question 3: Results
+
+-   The actual difference between the average review first listings with and without free cancellation was found to be 0.1286729. \vspace{0.2cm}
+-   The p-value was found to be 0.0085. \vspace{0.2cm}
+-   We have a p value of 0.0085, this means we have strong evidence against the null hypothesis that there is no difference between the average review rating for first listings between the groups which have free cancellation and don't have free cancellation. \vspace{0.2cm}
+-   This means that there is a clear difference in the review ratings for listings with and without free cancellation. Hence Expedia researches must have greater focus on including more listings with free cancellations. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Conclusion
+
+-   From the bootstrapping investigation we can state with 95% confidence that the mean stay length for listings on the Expedia website in the specified timeframe is between 2.897 and 3.258 nights.
+    -   In comparison to Expedia's competitor, Airbnb, it is a lower average stay length with Airbnb averaging 3.9 nights per customer, hence we have decided to analyze certain factors which may influence this.
+-   From the proportion based hypothesis testing we can conclude that we have very strong evidence against the fact that among all the searches on the Expedia website in the specified timeframe, the proportion of the first listings which are advertised in travel ads is equal to 50%.
+-   We can conclude that the option of first listings having free cancellation does lead to a difference in the average review rating according to the two proportion hypothesis which showed that there is strong evidence against there being no difference between the average review rating for first listings between the groups which have free cancellation and don't have free cancellation
+
+------------------------------------------------------------------------
+
+## Limitations
+
+-   For this investigation specifically questions 1 and 2, only thefirst listings we used so we can't necessarily generalize the findings for the whole dataset hence further analysis is needed. \vspace{0.2cm}
+-   The data set was only for a small duration of time specifically during the covid-19 pandemic hence travel restrictions to countries would have had heavy influence on the data collected. \vspace{0.2cm}
+-   The possible factors in the data dictionary which can influence listings chosen such as free wifi and breakfast were removed in the data set given hence possible other reasons for the indicator variable specifically in question 3 could not be recorded \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## References and Acknowledgements
+
+-   Airbnb Economic Impact. Retrieved March 20th, 2022, from [https://blog.atairbnb.com/economic-impact-airbnb/#:\~:text=Airbnb%20guests%](https://blog.atairbnb.com/economic-impact-airbnb/#:~:text=Airbnb%20guests%) 20stay%20on%20average,%24713%20for%20the%20average%20visitor. \vspace{0.2cm}
+-   The authors will like to thank Colin for their helpful suggestions on the visualizations used for the 2 proportion hypothesis tests and simplfying our bootstrapping interval approach for this project \vspace{0.2cm}
+-   The authors will like to thank Uzair for their helpful suggestions in reevaluating our research questions including solidifying our approach for the porportion based hypothesis testing and overall selection of the 3 research questions \vspace{0.2cm}
