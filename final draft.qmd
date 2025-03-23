@@ -1,0 +1,356 @@
+---
+title: "Data Analysis of Wellspring Member Engagement"
+author: "Thea Guan, Cindy Yang, Rachel Pham, TUT0104, and 0104-D"
+format: beamer
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,      # Hide code
+  include = TRUE,   # Do not include output
+  warning = FALSE,   # Suppress warnings
+  message = FALSE,   # Suppress messages
+  results = TRUE   # Display printed output (can use results=FALSE for a specific code chunk to suppress output)
+)
+
+# Note: the options above are to hide the code chunk in the slides and to not include the code in the slides
+# There are many other options you can use to customize which parts of the code are run / displayed, 
+# as well as how the output is displayed. 
+# You can learn more at https://quarto.org/docs/computations/execution-options.html
+
+```
+
+```{r load-data, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# Load Wellspring data
+data_patient_members <- read_csv("data/Member_Background.csv")
+data_attendance_records <- read_csv("data/Service_Deliveries.csv")
+
+# Show a quick overview
+#glimpse(data_patient_members)
+#glimpse(data_attendance_records)
+
+```
+
+# Introduction
+
+-   Wellspring is a Canada-wide network of charities offering free cancer support programs to individuals at any stage of their cancer journey. \vspace{0.2cm}
+-   This project aims to evaluate the impact of their simplified registration system, implemented on March 4, 2024, on member engagement, such as event attendance rates or time to first event. \vspace{0.2cm}
+-   The analysis will be tailored to an audience of Wellspring employees, thus presenting clear, practical, and visually accessible results is critical in order to support their mission of improving cancer care services. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 1: Introduction
+
+-   Research question - Is Wellspring’s membership age distribution balanced? \vspace{0.2cm}
+-   For this question, the variables which will be utilized within this method would be the ‘**age_years**’ variable within the data set.
+-   From the **age_years** variables, a new binary variable will be created, which classifies members as "young members" (age \< 40) and "elder members" to calculate the proportion of young members among all membership. \vspace{0.2cm}
+-   A **one-sample proportion test** would be used to determine whether the proportion of young members (defined as those under 40 years old) is equal to the proportion of elder members. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Data summary
+
+\vspace{0.8cm}
+
+------------------------------------------------------------------------
+
+## Question 1: Data Visualization
+
+```{r "age-distribution", echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, out.width="60%", fig.align='center', fig.cap="Proportion of Young vs. Elder Members"}
+# Create the "young Members" and "elder Members" classification
+data_age_groups <- data_patient_members %>%
+  mutate(age_group = ifelse(age_years < 40, "young members (<40)", "elder members (≥40)"))
+
+# Calculate the percentage of each group
+age_distribution <- data_age_groups %>%
+  count(age_group) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Create the bar plot with color-coding and a 50% reference line
+age_distribution %>%
+  ggplot(aes(x = age_group, y = percentage, fill = age_group)) +
+  geom_bar(stat = "identity", width = 0.6, show.legend = FALSE) +
+  geom_hline(yintercept = 50, linetype = "dashed", color = "black") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5, size = 5) +
+  scale_fill_manual(values = c("deeppink", "cyan3")) +
+  scale_y_continuous(limits = c(0, 60), expand = c(0, 0)) + 
+  labs(title = "Proportion of Young vs. Elder Members",
+       x = "Age Group",
+       y = "Percentage of Total Members") +
+  theme_minimal()
+```
+
+-   See Figure 1, elder Members (≥40) make up 52.1% of members, while only 6.9% are under 40. 41% of age data is missing, which may affect the reliability of these results. \vspace{0.2cm}
+
+-   The age imbalance suggests Wellspring's services are more used by older individuals. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 1: Statistical Analysis
+
+-   H0 (Null Hypothesis): The proportion of young members is equal to 50% (i.e., the age distribution is balanced). \vspace{0.2cm}
+-   Ha (Alternative Hypothesis): The proportion of young members is not equal to 50% (i.e., there is an imbalance in the age distribution). \vspace{0.2cm}
+-   The test statistic and the p-value can be estimated from a graph based on multiple repetitions of simulated samples assuming the null hypothesis is true.
+-   The test included **10,000 simulations** to determine the distribution of the proportion of young members under the assumption that the true proportion is 0.5. \vspace{0.2cm}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+library(tidyverse)
+
+
+set.seed(420)
+
+wellspring <- data_patient_members %>%
+  filter(!is.na(age_years)) %>%
+  mutate(age_group = ifelse(age_years < 40, "Young", "Elder"))
+
+n <- nrow(wellspring)
+observed_prop_young <- mean(wellspring$age_group == "Young")
+
+# Simulations under null hypothesis: p = 0.5
+reps <- 10000
+sim_stats <- rep(NA, reps)
+
+for(i in 1:reps) {
+  sim_sample <- sample(c("Young", "Elder"), size = n, prob = c(0.5, 0.5), replace = TRUE)
+  sim_stats[i] <- mean(sim_sample == "Young")
+}
+
+# Estimate p-value
+simulations <- tibble(prop_young = sim_stats)
+p_value <- simulations %>%
+  filter(abs(prop_young - 0.5) >= abs(observed_prop_young - 0.5)) %>%
+  summarise(pvalue = n() / reps)
+
+```
+
+------------------------------------------------------------------------
+
+## Question 1: Results
+
+-   The **p-value** was found to be **0**, which is less than 0.001, we conclude that we have **very strong evidence against the null hypothesis** that the proportion of young and elder members is 50% each. Wellspring’s membership is heavily skewed toward elder members, with few young members. \vspace{0.2cm}
+-   Further research is suggested to investigate possible causes behind the underepresentation of younger individuals at Wellspring, and whether targeted outreach or program redesign could help attract a more age-diverse membership. \vspace{0.2cm}
+-   However, if the missing data is random, the analysis likely reflects the true membership. But if younger people are more likely to omit their age, the imbalance may be overestimated.\vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 2: Introduction
+
+-   Research question - **Is the proportion of the first listed property a travel ad, equal to 50%?** \vspace{0.2cm}
+-   
+
+------------------------------------------------------------------------
+
+## Question 2: Data Visualization
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+library(tidyverse)
+
+```
+
+The above bar graph shows the frequency of the first listing being a Travel Ad or not. It can be observed that out of the sample data, 600 of the first listings were not Travel Ads, while the rest 400 were Travel Ads.
+
+------------------------------------------------------------------------
+
+## Question 2: Statistical Analysis
+
+-   Null Hypothesis ($H_0$): Among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, the proportion of the first listings which are advertised in travel ads is equal to 50%.
+-   
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+
+```
+
+------------------------------------------------------------------------
+
+## Question 2: Results
+
+-   The actual proportion of first listings advertised in a travel ad was found to be 0.419. \vspace{0.2cm}
+-   
+
+------------------------------------------------------------------------
+
+## Question 3: Introduction
+
+-   The variables member_start_year, member_start_month were used to determine the registration date for each member. \vspace{0.2cm}
+-   Taking the minimum of the variables delivery_year, delivery_month, delivery_day, as well as filtering by Present in attendance_status were used to determine the date of the member's first attended event. \vspace{0.2cm}
+-   The new variable system_change was created to differentiate between if a member registered before or after the system change date, and grouped accordingly. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Question 3: Data Visualizations
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center', fig.cap= "Proportion of Members Attending First Event Within 30 Days"}
+library(tidyverse)
+data_patient_members <- read_csv("data/Member_Background.csv")
+data_attendance_records <- read_csv("data/Service_Deliveries.csv")
+
+# Add registration date
+data_patient_members <- data_patient_members %>%
+  mutate(
+    registration_date = make_date(member_start_year, member_start_month, 1)  # Assume day = 1
+  )
+
+# Add event date
+data_attendance_records <- data_attendance_records %>%
+  mutate(
+    event_date = make_date(delivery_year, delivery_month, delivery_day)
+  )
+
+# Filter for attended events
+attended_events <- data_attendance_records %>%
+  filter(attendance_status == "Present")
+
+# Find the first event for each member
+first_events <- attended_events %>%
+  group_by(member_id) %>%
+  summarise(first_event_date = min(event_date))
+
+# Merge datasets
+merged_data <- data_patient_members %>%
+  left_join(first_events, by = "member_id")
+
+# Create system_change column
+system_change_date <- as.Date("2024-03-04")  # March 4th, 2024
+merged_data <- merged_data %>%
+  mutate(
+    system_change = ifelse(registration_date >= system_change_date, 1, 0)
+  )
+
+# Calculate whether the first event was within 30 days
+merged_data <- merged_data %>%
+  mutate(
+    first_event_30_days = ifelse(
+      !is.na(first_event_date) & (first_event_date - registration_date) <= 30,
+      1, 0
+    )
+  )
+
+# Calculate proportions and the observed difference in one step
+prop_data <- merged_data %>%
+  group_by(system_change) %>%
+  summarise(
+    prop_within_30_days = mean(first_event_30_days, na.rm = TRUE),  # Proportion for each group
+    count = n()  # Total count for each group
+  )
+
+# Calculate the observed difference
+observed_diff <- prop_data %>%
+  summarise(diff = diff(prop_within_30_days)) %>%
+  as.numeric()
+
+# Print the observed difference
+# print(paste("Observed difference in proportions:", observed_diff))
+
+# Create the bar plot
+ggplot(prop_data, aes(x = factor(system_change), y = prop_within_30_days, fill = factor(system_change))) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+  scale_x_discrete(labels = c("Before", "After")) +
+  scale_fill_manual(values = c("0" = "blue", "1" = "red")) +
+  geom_text(aes(label = paste0(round(prop_within_30_days * 100, 1), "%")),
+            position = position_dodge(width = 0.5), vjust = -0.5, size = 3.5) +
+  labs(
+    title = "Proportion of Members Attending First Event Within 30 Days",
+    x = "System Change",
+    y = "Proportion of Members"
+  ) +
+  ylim(0, max(prop_data$prop_within_30_days) * 1.2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 9),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9)
+  )
+```
+
+See Figure 3, the bar graph shows the proportion of members attending their first event within 30 days. Before the registration system change, 67.8% of members attended their first event within 30 days, while only 35.5% did after the change.
+
+------------------------------------------------------------------------
+
+## Question 3: Statistical Analysis
+
+-   Null hypothesis (H0): The proportion of members attending their first event within 30 days of registration is the same before and after the registration system change. \vspace{0.2cm}
+-   Alternative hypothesis (Ha): The proportion of members attending their first event within 30 days changed after the registration system change. \vspace{0.2cm}
+-   To assess the significance of the observed difference in proportions between the two groups, we performed a permutation test with 10,000 random permutations. This included randomly shuffling the system_change labels to simulate the null hypothesis, and recalculating the difference in proportions for each permutation to build the null distribution of differences. \vspace{0.2cm}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+set.seed(130)
+# Perform the permutation test
+num_trials <- 10000  # Number of random permutations
+delta_prop_simulations <- rep(NA, num_trials)  # Store simulated differences
+
+for (i in 1:num_trials) {
+  # Perform a random permutation of the system_change labels
+  simdata <- merged_data %>%
+    mutate(system_change = sample(system_change, replace = FALSE))
+  
+  # Compute the simulated test statistic (difference in proportions)
+  delta_assuming_no_difference <- simdata %>%
+    group_by(system_change) %>%
+    summarise(prop_within_30_days = mean(first_event_30_days, na.rm = TRUE)) %>%
+    summarise(diff = diff(prop_within_30_days)) %>%
+    as.numeric()
+  
+  # Store the simulated value
+  delta_prop_simulations[i] <- delta_assuming_no_difference
+}
+
+# Calculate the p-value
+p_value <- mean(abs(delta_prop_simulations) >= abs(observed_diff))
+#print(paste("P-value:", p_value))
+
+# Create a data frame for ggplot
+simulation_results <- data.frame(delta_prop_simulations = delta_prop_simulations)
+
+# Plot the null distribution
+#ggplot(simulation_results, aes(x = delta_prop_simulations)) +
+  #geom_histogram(binwidth = 0.02, fill = "lightblue", color = "black") +
+  #geom_vline(xintercept = observed_diff, color = "red", linetype = "dashed", size = 1) +
+ # geom_vline(xintercept = -observed_diff, color = "red", linetype = "dashed", size = 1) +
+  #labs(
+   # title = "Null Distribution of Differences in Proportions",
+    #x = "Difference in Proportions",
+    #y = "Frequency"
+  #) +
+  #theme_minimal() +
+  #theme(
+   # plot.title = element_text(size = 12)
+  #)
+```
+
+------------------------------------------------------------------------
+
+## Question 3: Results
+
+-   The actual difference between the proportions was -0.32564096245674. This indicates a 32.6 percentage point decrease in participation within the first 30 days after the system change. \vspace{0.2cm}
+
+    The p-value was found to be 0. \vspace{0.2cm}
+
+    Since the p-value is less than 0.05, we conclude that we have very strong evidence against the null hypothesis. \vspace{0.2cm}
+
+    We conclude that the system change had a statistically significant negative effect on member participation. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## Conclusion
+
+-   The significant underrepresentation of young members suggests a potential gap in Wellspring’s outreach or service appeal. Adapting programs to better engage younger individuals could help build a more balanced and sustainable membership base.
+-   
+-   The proportion of members attending their first event within 30 days of registration decreased by 32.6 percentage points after the change, with a p-value of 0, indicating there were lower early participation rates among members
+
+------------------------------------------------------------------------
+
+## Limitations
+
+-   For Q1, a key limitation is the high proportion of missing age data, which may bias the results if not missing at random. Additional variables such as gender, location, or membership activity would help provide a more complete picture of engagement across age groups.\vspace{0.2cm}
+-   
+-   Since there was no member_start_day indicating the day of the month which Wellspring patients registered, we had to assume that everyone registered on the first day of the month for consistency. The accuracy of findigns for Q3 could be improved upon if we had access to a member_start_day variable. \vspace{0.2cm}
+
+------------------------------------------------------------------------
+
+## References and Acknowledgements
