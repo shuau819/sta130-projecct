@@ -1,0 +1,3 @@
+Updates:
+
+2025-03-13: We removed some comments not relevant to students. Use version `project-template-2025_03_13`.
