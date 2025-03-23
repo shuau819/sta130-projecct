@@ -56,19 +56,16 @@ glimpse(data_attendance_records)
 
 For this investigation we have chosen three research questions, \vspace{0.2cm}
 
--    Is Wellspring’s membership age distribution balanced? \vspace{0.2cm}
--    \vspace{0.2cm}
--    \vspace{0.2cm}
+-   Is Wellspring’s membership age distribution balanced? \vspace{0.2cm}
+-   \vspace{0.2cm}
+-   \vspace{0.2cm}
 
 ## Question 1: Introduction
 
 -   Research question - Is Wellspring’s membership age distribution balanced? \vspace{0.2cm}
--   For this question, the variables which will be utilized within this method would be the ‘**age_years**’ variable within the data set. From the **age_years** variables, a new binary variable will be created, which classifies members as "young members" (age \< 40) and "elder members" to calculate the proportion of young members among all membership. \vspace{0.2cm}
--   In order to carry out this research question, we would use a **one-sample proportion test** to determine whether the proportion of young members (defined as those under 40 years old) is equal to the proportion of elder members. \vspace{0.2cm}
--   H₀ (Null Hypothesis): The proportion of young members is equal to 50% (i.e., the age
-    distribution is balanced). \vspace{0.2cm}
--   Ha (Alternative Hypothesis): The proportion of young members is not
-    equal to 50% (i.e., there is an imbalance in the age distribution). \vspace{0.2cm}
+-   For this question, the variables which will be utilized within this method would be the ‘**age_years**’ variable within the data set.
+-   From the **age_years** variables, a new binary variable will be created, which classifies members as "young members" (age \< 40) and "elder members" to calculate the proportion of young members among all membership. \vspace{0.2cm}
+-   A **one-sample proportion test** would be used to determine whether the proportion of young members (defined as those under 40 years old) is equal to the proportion of elder members. \vspace{0.2cm}
 
 ------------------------------------------------------------------------
 
@@ -77,7 +74,7 @@ For this investigation we have chosen three research questions, \vspace{0.2cm}
 ```{r age-distribution, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align='center'}
 # Create the "young Members" and "elder Members" classification
 data_age_groups <- data_patient_members %>%
-  mutate(age_group = ifelse(age_years < 40, "young Members (<40)", "elder Members (≥40)"))
+  mutate(age_group = ifelse(age_years < 40, "young members (<40)", "elder members (≥40)"))
 
 # Calculate the percentage of each group
 age_distribution <- data_age_groups %>%
@@ -110,11 +107,10 @@ age_distribution %>%
 
 ## Question 1: Statistical Analysis
 
--   A bootstrap confidence interval test was used to narrow down the range of values which contain the mean amount of nights \vspace{0.2cm}
--   It was specifically done at the 95% level of confidence so that the results gathered would be more accurate in comparison to other levels of confidence which will result in more usable data for the Expedia researchers and greater application of results. \vspace{0.2cm}
--   We found the distribution of nights stayed in which contained the true average number of nights stayed \vspace{0.2cm}
--   We resampled the original sample with replacement 10,000 times which allowed for a simulation of sampling the population distribution however more feasible
--   Lastly the new distribution formed was narrowed down further by excluding 2.5% of the extreme values arriving at our 95% confidence interval \vspace{0.2cm}
+-   H₀ (Null Hypothesis): The proportion of young members is equal to 50% (i.e., the age distribution is balanced). \vspace{0.2cm}
+-   Ha (Alternative Hypothesis): The proportion of young members is not equal to 50% (i.e., there is an imbalance in the age distribution). \vspace{0.2cm}
+-   The test statistic and the p-value can be estimated from a graph based on multiple repetitions of simulated samples assuming the null hypothesis is true.
+-   The test included **10,000 simulations** to determine the distribution of the proportion of young members under the assumption that the true proportion is 0.5. \vspace{0.2cm}
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
 library(tidyverse)
@@ -122,16 +118,29 @@ library(tidyverse)
 
 set.seed(420)
 
-# this dataset expedia_data is a sample(assume)
-boot_means <- rep(NA, 10000)
-for(i in 1:10000){
-  boot_samp <- expedia_data %>% sample_n(size = 10000, replace = TRUE) %>% 
-    select(stay_length)
-  boot_means[i] <- as.numeric(boot_samp %>% 
-                                summarise(mean_stay_length = mean(stay_length)))
+wellspring <- data_patient_members %>%
+  filter(!is.na(age_years)) %>%
+  mutate(age_group = ifelse(age_years < 40, "Young", "Elder"))
+
+n <- nrow(wellspring)
+observed_prop_young <- mean(wellspring$age_group == "Young")
+
+# Simulations under null hypothesis: p = 0.5
+reps <- 10000
+sim_stats <- rep(NA, reps)
+
+for(i in 1:reps) {
+  sim_sample <- sample(c("Young", "Elder"), size = n, prob = c(0.5, 0.5), replace = TRUE)
+  sim_stats[i] <- mean(sim_sample == "Young")
 }
-boot_means <- tibble(mean_stay_length = boot_means)
-#quantile(boot_means$mean_stay_length, c(0.025, 0.975))
+
+# Estimate p-value
+simulations <- tibble(prop_young = sim_stats)
+p_value <- simulations %>%
+  filter(abs(prop_young - 0.5) >= abs(observed_prop_young - 0.5)) %>%
+  summarise(pvalue = n() / reps)
+
+p_value
 
 ```
 
@@ -139,13 +148,11 @@ boot_means <- tibble(mean_stay_length = boot_means)
 
 ## Question 1: Results
 
-| 2.5%  | 97.5% |
-|:-----:|:-----:|
-| 2.897 | 3.258 |
-
--   From this bootstrapping investigation we are 95% confident that the mean stay length for listings on the Expedia website from 2021-06-01 to 2021-07-31 is between 2.897 and 3.258 nights \vspace{0.2cm}
--   This conclusion does not give the exact mean stay length however it gives a plausible range of values thats small enough that it will still be useful to the researchers \vspace{0.2cm}
--   In comparison to Expedia's competitor, Airbnb, this range contains a number that is lower (Airbnb's average stay length is 3.9 nights) which leads us to believe that there is room for improvement with the listings given to consumers \vspace{0.2cm}
+-   The **p-value** was found to be **0**. \vspace{0.2cm}
+-   Since the p-value is **0**, which is less than 0.001, we conclude that we have **very strong evidence against the null hypothesis** that the proportion of young and elder members is 50% each. \vspace{0.2cm}
+-   The age distribution of Wellspring members is significantly **imbalanced**, with far fewer young members than expected under a balanced 50/50 assumption. \vspace{0.2cm}
+-   Further research is suggested to investigate possible causes behind the underepresentation of younger individuals at Wellspring, and whether targeted outreach or program redesign could help attract a more age-diverse membership. \vspace{0.2cm}
+-   However, if the missing data is random, then we can still be reasonably confident that the analysis represents the overall membership. Otherwise it can introduce serious bias into the analysis. (young people are reluctant to disclose their age (more likely to be missing). Then the analysis then overestimates the proportion of older members and underestimates the proportion of younger members, even though the number of younger members may not actually be that small. ) \vspace{0.2cm}
 
 ------------------------------------------------------------------------
 
