@@ -327,3 +327,174 @@ p_value <- as.numeric(num_more_extreme / repititions)
 -   Airbnb Economic Impact. Retrieved March 20th, 2022, from [https://blog.atairbnb.com/economic-impact-airbnb/#:\~:text=Airbnb%20guests%](https://blog.atairbnb.com/economic-impact-airbnb/#:~:text=Airbnb%20guests%) 20stay%20on%20average,%24713%20for%20the%20average%20visitor. \vspace{0.2cm}
 -   The authors will like to thank Colin for their helpful suggestions on the visualizations used for the 2 proportion hypothesis tests and simplfying our bootstrapping interval approach for this project \vspace{0.2cm}
 -   The authors will like to thank Uzair for their helpful suggestions in reevaluating our research questions including solidifying our approach for the porportion based hypothesis testing and overall selection of the 3 research questions \vspace{0.2cm}
+
+
+
+----------------------------------------
+Question 3
+
+Research question - Did the proportion of members attending their first event within 30 days of registration increase after the registration change?
+
+The observed difference between the proportion of members who attended their first event within 30 days pre-registration and post-registration was determined. \vspace{0.2cm}
+
+A two-sample hypothesis test comparing pre- and post-registration system change groups was used with the research question. \vspace{0.2cm}
+
+Question 3: Introduction
+
+The variables member_start_year, member_start_month were used to determine the registration date for each member. \vspace{0.2cm}
+
+Taking the minimum of the variables delivery_year, delivery_month, delivery_day, as well as filtering by Present in attendance_status were used to determine the date of the member's first attended event. \vspace{0.2cm}
+
+The new variable system_change was created to differentiate between if a member registered before or after the system change date, and grouped accordingly. \vspace{0.2cm}
+
+Question 3: Data Visualization
+
+{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+library(tidyverse)
+data_patient_members <- read_csv("Member_Background.csv")
+data_attendance_records <- read_csv("Service_Deliveries.csv")
+
+# Add registration date
+data_patient_members <- data_patient_members %>%
+  mutate(
+    registration_date = make_date(member_start_year, member_start_month, 1)  # Assume day = 1
+  )
+
+# Add event date
+data_attendance_records <- data_attendance_records %>%
+  mutate(
+    event_date = make_date(delivery_year, delivery_month, delivery_day)
+  )
+
+# Filter for attended events
+attended_events <- data_attendance_records %>%
+  filter(attendance_status == "Present")
+
+# Find the first event for each member
+first_events <- attended_events %>%
+  group_by(member_id) %>%
+  summarise(first_event_date = min(event_date))
+
+# Merge datasets
+merged_data <- data_patient_members %>%
+  left_join(first_events, by = "member_id")
+
+# Create system_change column
+system_change_date <- as.Date("2024-03-04")  # March 4th, 2024
+merged_data <- merged_data %>%
+  mutate(
+    system_change = ifelse(registration_date >= system_change_date, 1, 0)
+  )
+
+# Calculate whether the first event was within 30 days
+merged_data <- merged_data %>%
+  mutate(
+    first_event_30_days = ifelse(
+      !is.na(first_event_date) & (first_event_date - registration_date) <= 30,
+      1, 0
+    )
+  )
+
+# Calculate proportions and the observed difference in one step
+prop_data <- merged_data %>%
+  group_by(system_change) %>%
+  summarise(
+    prop_within_30_days = mean(first_event_30_days, na.rm = TRUE),  # Proportion for each group
+    count = n()  # Total count for each group
+  )
+
+# Calculate the observed difference
+observed_diff <- prop_data %>%
+  summarise(diff = diff(prop_within_30_days)) %>%
+  as.numeric()
+
+# Print the observed difference
+# print(paste("Observed difference in proportions:", observed_diff))
+
+# Create the bar plot
+ggplot(prop_data, aes(x = factor(system_change), y = prop_within_30_days, fill = factor(system_change))) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+  scale_x_discrete(labels = c("Before", "After")) +
+  scale_fill_manual(values = c("0" = "blue", "1" = "red")) +
+  geom_text(aes(label = paste0(round(prop_within_30_days * 100, 1), "%")),
+            position = position_dodge(width = 0.5), vjust = -0.5, size = 3.5) +
+  labs(
+    title = "Proportion of Members Attending First Event Within 30 Days",
+    x = "System Change",
+    y = "Proportion of Members"
+  ) +
+  ylim(0, max(prop_data$prop_within_30_days) * 1.2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 9),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9)
+  )
+
+The above bar graph shows the proportion of members attending their first event within 30 days. Before the registration system change, 67.8% of members attended their first event within 30 days, while only 35.5% did after the change.
+
+Question 3: Statistical Analysis
+
+Null hypothesis ($H_0$): The proportion of members attending their first event within 30 days of registration is the same before and after the registration system change. \vspace{0.2cm}
+
+Alternative hypothesis ($H_1$): The proportion of members attending their first event within 30 days changed after the registration system change. \vspace{0.2cm}
+
+To assess the significance of the observed difference in proportions between the two groups, we performed a permutation test with 10,000 random permutations. This included randomly shuffling the system_change labels to simulate the null hypothesis, and recalculating the difference in proportions for each permutation to build the null distribution of differences. \vspace{0.2cm}
+
+{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+set.seed(130)
+# Perform the permutation test
+num_trials <- 10000  # Number of random permutations
+delta_prop_simulations <- rep(NA, num_trials)  # Store simulated differences
+
+for (i in 1:num_trials) {
+  # Perform a random permutation of the system_change labels
+  simdata <- merged_data %>%
+    mutate(system_change = sample(system_change, replace = FALSE))
+  
+  # Compute the simulated test statistic (difference in proportions)
+  delta_assuming_no_difference <- simdata %>%
+    group_by(system_change) %>%
+    summarise(prop_within_30_days = mean(first_event_30_days, na.rm = TRUE)) %>%
+    summarise(diff = diff(prop_within_30_days)) %>%
+    as.numeric()
+  
+  # Store the simulated value
+  delta_prop_simulations[i] <- delta_assuming_no_difference
+}
+
+# Calculate the p-value
+p_value <- mean(abs(delta_prop_simulations) >= abs(observed_diff))
+# print(paste("P-value:", p_value))
+
+# Create a data frame for ggplot
+# simulation_results <- data.frame(delta_prop_simulations = delta_prop_simulations)
+
+# Plot the null distribution
+# ggplot(simulation_results, aes(x = delta_prop_simulations)) +
+  # geom_histogram(binwidth = 0.02, fill = "lightblue", color = "black") +
+  # geom_vline(xintercept = observed_diff, color = "red", linetype = "dashed", size = 1) +
+  # geom_vline(xintercept = -observed_diff, color = "red", linetype = "dashed", size = 1) +
+  # labs(
+    # title = "Null Distribution of Differences in Proportions",
+    # x = "Difference in Proportions",
+    # y = "Frequency"
+  # ) +
+  # theme_minimal() +
+  # theme(
+    # plot.title = element_text(size = 12)
+  # )
+
+Question 3: Results
+
+The actual difference between the proportions was -0.32564096245674. This indicates a 32.6 percentage point decrease in participation within the first 30 days after the system change. \vspace{0.2cm}
+
+The p-value was found to be 0. \vspace{0.2cm}
+
+Since the p-value is less than 0.05, we conclude that we have very strong evidence against the null hypothesis. \vspace{0.2cm}
+
+We conclude that the system change had a statistically significant negative effect on member participation. \vspace{0.2cm}
+
