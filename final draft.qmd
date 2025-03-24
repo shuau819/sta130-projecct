@@ -138,37 +138,112 @@ p_value <- simulations %>%
 
 ## Question 2: Introduction
 
--   Research question - **Is the proportion of the first listed property a travel ad, equal to 50%?** \vspace{0.2cm}
--   
+-   Research question **Did overall event attendance rates improve after the system change?** \vspac
+
+-   The variables member_start_year, member_start_month, number_of_present_service_deliveries, and number_of_absent_service_deliveries will be used to explore this question.
+
+-   We will create a new variable attendance_rate, obtained by the following equation:
+
+    $attendance\_rate = \frac{"Present" events}{"Present" events + "Absent" events}$
+
+-   In order to carry out this research question, we will use a **two-sample proportion test** to compare the mean attendance_rate of the members registered before and after the system change.
+
+-   H₀ (Null Hypothesis): The mean attendance_rate is the same before and after March 4, 2024. \vspace{0.2cm}
+
+-   Ha (Alternative Hypothesis): The mean attendance_rate is different before and after March 4, 2024. \vspace{0.2cm} 
 
 ------------------------------------------------------------------------
 
 ## Question 2: Data Visualization
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
-library(tidyverse)
+data_registration <- data_patient_members |>
+  mutate(registration_period = case_when(
+    member_start_year < 2024 ~ "Before",
+    member_start_year == 2024 & member_start_month < 3 ~ "Before",
+    member_start_year == 2024 & member_start_month == 3 ~ "Before",
+    TRUE ~ "After"
+  ), attendance_rate = number_of_present_service_deliveries / 
+                           (number_of_present_service_deliveries + number_of_absent_service_deliveries))
+
+mean_attendance <- data_registration |> 
+  group_by(registration_period) |> 
+  summarize(mean_attendance_rate = mean(attendance_rate, na.rm = TRUE))
+
+mean_attendance |>
+  ggplot(aes(x = registration_period, y = mean_attendance_rate, fill = registration_period)) +
+  geom_bar(stat = "identity", width = 0.6, show.legend = FALSE) +
+  geom_text(aes(label = paste0(round(mean_attendance_rate * 100, 1), "%")), 
+            vjust = -0.5) +
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0), labels = scales::percent) + 
+  labs(title = "Mean Attendance Rate Before vs After System Change",
+       x = "Registration Period",
+       y = "Mean Attendance Rate")
 
 ```
 
-The above bar graph shows the frequency of the first listing being a Travel Ad or not. It can be observed that out of the sample data, 600 of the first listings were not Travel Ads, while the rest 400 were Travel Ads.
+The bar graph above displays the mean attendance rates of members registered before and after the system change on March 4, 2024. It is observed that the average attendance rate for members registered before the change is approximately 80.1%, while the rate for those registered after the change is around 68.6%.
 
 ------------------------------------------------------------------------
 
 ## Question 2: Statistical Analysis
 
--   Null Hypothesis ($H_0$): Among all the searches on the Expedia website that span the period from 2021-06-01 to 2021-07-31, the proportion of the first listings which are advertised in travel ads is equal to 50%.
--   
+-   Null Hypothesis ($H_0$): The mean attendance_rate is the same before and after March 4, 2024.
+-   Alternative Hypothesis ($H_1$): The mean attendance_rate is different before and after March 4, 2024.
+-   The test statistic was calculated based on the actual data. A permutation test was conducted by randomly shuffling the registration periods and recalculating the difference in mean attendance rates over 1,000 simulations. The resulting simulated differences were plotted to visualize the null distribution.
+-   The p value obtained can be used to come up with a valid conclusion on whether to reject or accept the null hypothesis.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
 
-```
+num_trials <- 1000
+delta_attendance_simulations <- rep(NA, num_trials)
+
+set.seed(123)
+
+for(i in 1:num_trials){
+  simdata <- data_registration |>
+    mutate(registration_period = sample(registration_period, replace = FALSE))
+  
+  delta_assuming_no_difference <- simdata |>
+    group_by(registration_period) |>
+    summarise(mean_attendance_rate = mean(attendance_rate, na.rm = TRUE)) |>
+    summarise(diff = diff(mean_attendance_rate)) |>
+    pull(diff)
+  
+  delta_attendance_simulations[i] <- delta_assuming_no_difference
+}
+
+# Plot
+simulation_data <- tibble(delta_attendance_simulations = delta_attendance_simulations)
+
+attendance_simulation_plot <- simulation_data |>
+  ggplot(aes(x = delta_attendance_simulations)) +
+  geom_histogram() + 
+  labs(
+    title = "Simulated Null Distribution of Attendance Rate Difference",
+    x = "Difference in Mean Attendance Rate (After - Before)",
+    y = "Count"
+  )
+attendance_simulation_plot
+
+test_stat <- abs(data_registration |>
+  group_by(registration_period) |>
+  summarise(mean_attendance_rate = mean(attendance_rate, na.rm = TRUE)) |>
+  summarise(difference = diff(mean_attendance_rate)) |>
+  pull(difference))
+test_stat
+
+p_value <- mean(abs(delta_attendance_simulations) >= test_stat)
+p_value
 
 ------------------------------------------------------------------------
 
 ## Question 2: Results
 
--   The actual proportion of first listings advertised in a travel ad was found to be 0.419. \vspace{0.2cm}
--   
+-   The actual difference in mean attendance rates between the members who registered before and after the system change was found to be approximately 0.116. \vspace{0.2cm}
+-   Based on 100 simulation trials, the p-value was calculated to be 0. \vspace{0.2cm}
+-   Since the p-value is less than 0.001, we have strong evidence against the null hypothesis that the registration period (before or after the system change) has no effect on attendance rates. Specifically, the attendance rates seem to decrease after the change. \vspac
+-   This result suggests that the new system might have introduced new barriers to Wellspring's members, therefore further research is needed to explore the causes of the difference in attendance rates and to investigate how the system change may have impacted member engagement. \vspace{0.2cm}
 
 ------------------------------------------------------------------------
 
