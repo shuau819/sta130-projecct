@@ -360,11 +360,12 @@ See Figure 3, the bar graph shows the proportion of members attending their firs
 
 ------------------------------------------------------------------------
 
+
 ## Question 3: Statistical Analysis
 
--   Null hypothesis (H0): The proportion of members attending their first event within 30 days of registration is the same before and after the registration system change. \vspace{0.2cm}
--   Alternative hypothesis (Ha): The proportion of members attending their first event within 30 days changed after the registration system change. \vspace{0.2cm}
--   To assess the significance of the observed difference in proportions between the two groups, we performed a permutation test with 10,000 random permutations. This included randomly shuffling the system_change labels to simulate the null hypothesis, and recalculating the difference in proportions for each permutation to build the null distribution of differences. \vspace{0.2cm}
+-   We assumed the system change didn't affect the proportion of members attending their first event within 30 days of registration. \vspace{0.2cm}
+-   Then, we randomly shuffled the data 10,000 times to see how often the difference in proportions produced was as large as the observed difference. \vspace{0.2cm}
+- If the observed difference was far bigger than most random shuffles, the system change likely affected the proportion of members who attended their first event with 30 days. \vspace{0.2cm}
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
@@ -404,9 +405,9 @@ simulation_results <- data.frame(delta_prop_simulations = delta_prop_simulations
 ## Question 3: Results
 
 -   The actual difference between the proportions was -0.326. This indicates a 32.6 percentage point decrease in participation within the first 30 days for members who registered after the system change. \vspace{0.2cm}
--   The p-value was found to be 0. \vspace{0.2cm}
--   Since the p-value is less than 0.05, we conclude that we have very strong evidence against the null hypothesis. \vspace{0.2cm}
--   We conclude that the system change had a statistically significant negative effect on member participation. \vspace{0.2cm}
+-   The p-value from the two-sample hypothesis test was found to be 0. \vspace{0.2cm}
+-   Since the p-value is less than 0.05, we conclude that we have very strong evidence against the hypothesis that the system change had no affect. \vspace{0.2cm}
+-   We conclude that the system change had a statistically significant negative effect on proportion of members attending their first event within 30 days. \vspace{0.2cm}
 ------------------------------------------------------------------------
 
 ## Conclusion
