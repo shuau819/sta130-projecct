@@ -37,7 +37,7 @@ data_attendance_records <- read_csv("data/Service_Deliveries.csv")
 # Introduction
 
 -   Wellspring is a Canada-wide network of charities offering free cancer support programs to individuals at any stage of their cancer journey. \vspace{0.2cm}
--   This project aims to evaluate the impact of their simplified registration system, implemented on March 4, 2024, on member engagement, such as event attendance rates or time to first event. \vspace{0.2cm}
+-   This project aims to evaluate the impact of their simplified registration system, implemented on March 4, 2024, on member engagement, such as memership age distribution, event attendance rates, and time to first event. \vspace{0.2cm}
 -   The analysis will be tailored to an audience of Wellspring employees, thus presenting clear, practical, and visually accessible results is critical in order to support their mission of improving cancer care services. \vspace{0.2cm}
 
 ------------------------------------------------------------------------
@@ -244,20 +244,35 @@ p_value
 -   Based on 100 simulation trials, the p-value was calculated to be 0. \vspace{0.2cm}
 -   Since the p-value is less than 0.001, we have strong evidence against the null hypothesis that the registration period (before or after the system change) has no effect on attendance rates. Specifically, the attendance rates seem to decrease after the change. \vspac
 -   This result suggests that the new system might have introduced new barriers to Wellspring's members, therefore further research is needed to explore the causes of the difference in attendance rates and to investigate how the system change may have impacted member engagement. \vspace{0.2cm}
+------------------------------------------------------------------------
+
+## Question 3
+
+-   Research question - **Did the proportion of members attending their first event within 30 days of registration increase after the registration change?**
+-   The observed difference between the proportion of members who attended their first event within 30 days pre-registration and post-registration was determined. \vspace{0.2cm}
+-   A two-sample hypothesis test comparing pre- and post-registration system change groups was used with the research question. \vspace{0.2cm}
+------------------------------------------------------------------------
+
+## Question 3: Data Summary
+
+-   **Variables used:** \vspace{0.2cm}
+    -   `member_start_year` and `member_start_month`: Member registration date. \vspace{0.2cm}
+    -   `delivery_year`, `delivery_month`, `delivery_day`: Date of service delivery. \vspace{0.2cm}
+    -   `attendance_status`: Attendance status of member for service delivery. \vspace{0.2cm}
+
+-   **Wrangling performed:** \vspace{0.2cm}
+    -   Merged member background data with service delivery records using member ID. \vspace{0.2cm}
+    -   Determined the member's first attended event. \vspace{0.2cm}
+    -   Calculated the number of days between registration date and first attended event. \vspace{0.2cm} - Created `registration_period` variable: \vspace{0.2cm}
+        -   `"Before"` for registration before March 2024. \vspace{0.2cm}
+        -   `"After"` for registration after March 2024. \vspace{0.2cm}
+    -   Compared percentage of members to attend their first event within 30 days of registration across `registration_period` groups. \vspace{0.2cm}
 
 ------------------------------------------------------------------------
 
-## Question 3: Introduction
+## Question 3: Data Visualization
 
--   The variables member_start_year, member_start_month were used to determine the registration date for each member. \vspace{0.2cm}
--   Taking the minimum of the variables delivery_year, delivery_month, delivery_day, as well as filtering by Present in attendance_status were used to determine the date of the member's first attended event. \vspace{0.2cm}
--   The new variable system_change was created to differentiate between if a member registered before or after the system change date, and grouped accordingly. \vspace{0.2cm}
-
-------------------------------------------------------------------------
-
-## Question 3: Data Visualizations
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center', fig.cap= "Proportion of Members Attending First Event Within 30 Days"}
+```{r "attendance", echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5, out.width="60%", fig.align='center', fig.cap="Proportion of Young vs. Elder Members"}
 library(tidyverse)
 data_patient_members <- read_csv("data/Member_Background.csv")
 data_attendance_records <- read_csv("data/Service_Deliveries.csv")
@@ -298,9 +313,7 @@ merged_data <- merged_data %>%
 merged_data <- merged_data %>%
   mutate(
     first_event_30_days = ifelse(
-      !is.na(first_event_date) & (first_event_date - registration_date) <= 30,
-      1, 0
-    )
+      !is.na(first_event_date) & (first_event_date - registration_date) <= 30, 1, 0)
   )
 
 # Calculate proportions and the observed difference in one step
@@ -353,7 +366,9 @@ See Figure 3, the bar graph shows the proportion of members attending their firs
 -   Alternative hypothesis (Ha): The proportion of members attending their first event within 30 days changed after the registration system change. \vspace{0.2cm}
 -   To assess the significance of the observed difference in proportions between the two groups, we performed a permutation test with 10,000 random permutations. This included randomly shuffling the system_change labels to simulate the null hypothesis, and recalculating the difference in proportions for each permutation to build the null distribution of differences. \vspace{0.2cm}
 
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='center'}
+
 set.seed(130)
 # Perform the permutation test
 num_trials <- 10000  # Number of random permutations
@@ -382,41 +397,23 @@ p_value <- mean(abs(delta_prop_simulations) >= abs(observed_diff))
 # Create a data frame for ggplot
 simulation_results <- data.frame(delta_prop_simulations = delta_prop_simulations)
 
-# Plot the null distribution
-#ggplot(simulation_results, aes(x = delta_prop_simulations)) +
-  #geom_histogram(binwidth = 0.02, fill = "lightblue", color = "black") +
-  #geom_vline(xintercept = observed_diff, color = "red", linetype = "dashed", size = 1) +
- # geom_vline(xintercept = -observed_diff, color = "red", linetype = "dashed", size = 1) +
-  #labs(
-   # title = "Null Distribution of Differences in Proportions",
-    #x = "Difference in Proportions",
-    #y = "Frequency"
-  #) +
-  #theme_minimal() +
-  #theme(
-   # plot.title = element_text(size = 12)
-  #)
 ```
 
 ------------------------------------------------------------------------
 
 ## Question 3: Results
 
--   The actual difference between the proportions was -0.32564096245674. This indicates a 32.6 percentage point decrease in participation within the first 30 days after the system change. \vspace{0.2cm}
-
-    The p-value was found to be 0. \vspace{0.2cm}
-
-    Since the p-value is less than 0.05, we conclude that we have very strong evidence against the null hypothesis. \vspace{0.2cm}
-
-    We conclude that the system change had a statistically significant negative effect on member participation. \vspace{0.2cm}
-
+-   The actual difference between the proportions was -0.326. This indicates a 32.6 percentage point decrease in participation within the first 30 days for members who registered after the system change. \vspace{0.2cm}
+-   The p-value was found to be 0. \vspace{0.2cm}
+-   Since the p-value is less than 0.05, we conclude that we have very strong evidence against the null hypothesis. \vspace{0.2cm}
+-   We conclude that the system change had a statistically significant negative effect on member participation. \vspace{0.2cm}
 ------------------------------------------------------------------------
 
 ## Conclusion
 
 -   The significant underrepresentation of young members suggests a potential gap in Wellspring’s outreach or service appeal. Adapting programs to better engage younger individuals could help build a more balanced and sustainable membership base.
 -   
--   The proportion of members attending their first event within 30 days of registration decreased by 32.6 percentage points after the change, with a p-value of 0, indicating there were lower early participation rates among members
+-   The proportion of members attending their first event within 30 days of registration decreased by 32.6 percent after the change, with a p-value of 0, indicating there were lower early participation rates among members. \vspace{0.2cm}
 
 ------------------------------------------------------------------------
 
@@ -424,7 +421,7 @@ simulation_results <- data.frame(delta_prop_simulations = delta_prop_simulations
 
 -   For Q1, a key limitation is the high proportion of missing age data, which may bias the results if not missing at random. Additional variables such as gender, location, or membership activity would help provide a more complete picture of engagement across age groups.\vspace{0.2cm}
 -   
--   Since there was no member_start_day indicating the day of the month which Wellspring patients registered, we had to assume that everyone registered on the first day of the month for consistency. The accuracy of findigns for Q3 could be improved upon if we had access to a member_start_day variable. \vspace{0.2cm}
+-   For Q3, since there was no member_start_day variable indicating the day of the month which Wellspring patients registered, we assumed that everyone registered on the first day of the month for consistency. The accuracy of findings could be improved upon if we had access to a member_start_day variable. \vspace{0.2cm}
 
 ------------------------------------------------------------------------
 
